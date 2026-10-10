@@ -295,7 +295,7 @@
   .chip .mono,.entry-note .mono,.profile-group-label .mono{margin-right:6px;vertical-align:-4px}
   .entry-note .mono{vertical-align:-3px}
   .avatar{display:flex;align-items:center;justify-content:center;padding:0}
-  .mono-pair{display:inline-flex}.mono-pair .mono+.mono{margin-left:-12px;box-shadow:0 0 0 2px var(--card)}
+  .mono-pair{display:inline-flex}.mono-pair .mono+.mono{margin-left:-7px;box-shadow:0 0 0 2px var(--card)}
   .glyph-btn{flex:0 0 46px;height:46px;border-radius:10px;border:1.5px solid var(--line);background:var(--sunk);color:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer}
   .glyph-btn[aria-expanded=true]{border-color:var(--accent)}
   .glyph-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;padding:10px;margin:0 0 10px;border-radius:12px;background:var(--sunk)}
@@ -361,6 +361,30 @@
   @keyframes healGlow{0%{box-shadow:0 0 0 0 var(--plus)}40%{box-shadow:0 0 0 6px color-mix(in srgb,var(--plus) 35%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
   @keyframes floatUp{0%{opacity:0;transform:translate(-50%,8px) scale(.9)}15%{opacity:1;transform:translate(-50%,0) scale(1.08)}30%{transform:translate(-50%,-6px) scale(1)}100%{opacity:0;transform:translate(-50%,-46px)}}
   @media (prefers-reduced-motion: reduce){.modal-overlay,.modal,.impact-dim{transition:none}}
+
+  /* Together: who's who, splits, layered waves */
+  .wave.save path{fill:var(--save)}
+  .wave.w1{animation-delay:-1.7s;animation-duration:3.9s}.wave.w2{animation-delay:-.9s}
+  .layer{overflow:visible}
+  .who-key{display:flex;gap:16px;flex-wrap:wrap;margin:12px 6px 0;font-size:14px;color:var(--sub)}
+  .who-key span,.split{display:inline-flex;align-items:center;gap:6px}
+  .who-key i,.split i{width:12px;height:12px;border-radius:4px;border:1px solid var(--line2);flex-shrink:0}
+  .split-row{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:13px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .split i{width:9px;height:9px;border-radius:3px;border:none;box-shadow:0 0 0 1.5px var(--card)}
+  .center-text .split-row{justify-content:center;font-size:14px;margin-top:6px}
+  .tank.together .tank-text,.tank.together .center-text{z-index:6}
+  .tank.together .budget-line{z-index:7}
+  .person-rows{display:grid;gap:10px;margin:4px 0 12px}
+  .prow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sunk)}
+  .pmain{flex:1;min-width:0}
+  .ptop{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .ptop span{font-weight:800;font-variant-numeric:tabular-nums}.ptop em{font-weight:400;color:var(--sub);font-size:13px}
+  .prow .bar{margin-top:6px;background:var(--card)}
+  /* Savings tank: past savings band + this month's pour, draggable like the others */
+  .save-tank{height:124px;cursor:pointer}
+  .save-tank.together{height:96px}
+  .save-base{position:absolute;left:0;right:0;bottom:0;background:var(--iris);opacity:.18;pointer-events:none;z-index:1}
+  .save-tank .tank-text .v{font-size:26px}
 
 </style>
 </head>
@@ -509,7 +533,8 @@
       'Grab the water\'s surface in any tank and drag up to pour money in, or down to send it back to the Income tank. A line runs along the pipes from the Income tank while you pour, and the water follows your finger smoothly.',
       'Spending drains its tank; the water turns gold when it runs low and pink when it\'s nearly empty.',
       'Whatever is left at the end of the month flows into your Savings tank. A wrap-up on the 1st shows where it came from and lets you repeat last month\'s plan.',
-      'Together view merges both of your tanks, showing each person\'s share in its own colour.',
+      'Together view merges both of your tanks, showing each person\'s share in its own colour, each with its own wave, plus a key and a per-person split under every amount.',
+      'Pour into Savings too: drag its water up to set money aside this month (or type an amount in the Savings panel). It counts toward the month\'s savings rather than on top, and the wrap-up shows if spending ate into it. Each of you has your own Savings; Together adds them up.',
       'Tap a tank to see what drained it, top it up, move money to another tank or set its budget directly.',
       'Your old monthly budgets carry over as the starting amounts for your tanks.',
       'New layout: Tanks, Activity (list, calendar and search), the add button, Insights and More.',
@@ -1045,6 +1070,26 @@
     return rows;
   }
   function savingsOf(pids) { return savingsHistory(pids).reduce((s, r) => s + r.amount, 0); }
+  // Money poured into Savings this month is stored like a tank amount under a reserved id. It is never spent from;
+  // at month end Savings still grows by income minus spending, and what was set aside is part of that, not extra.
+  const SAVE = '__savings';
+  function pourOf(pids, month) { return pids.reduce((s, p) => s + allocAmt(p, month, SAVE), 0); }
+  // Savings tank geometry: past savings fill a fixed band at the bottom; the rest of the height is this month's pourable range.
+  function saveGeom(pid, month) {
+    const past = savingsOf([pid]), pour = allocAmt(pid, month, SAVE);
+    const avail = Math.max(pour, pour + incomeOf([pid], month) - allocTotal([pid], month));
+    const p0 = past > 0 ? Math.max(10, Math.min(35, past / (past + Math.max(avail, 1)) * 100)) : 0, span = 94 - p0;
+    return { past, pour, avail, p0, val: f => avail > 0 ? Math.max(0, (f * 100 - p0) / span * avail) : 0, pct: v => p0 + (avail > 0 ? Math.max(0, Math.min(1, v / avail)) * span : 0) };
+  }
+  // Stacked layers for the Together view: one per person, each with its own wave.
+  function stackHTML(heights, pids) {
+    let b = 0;
+    return heights.map((h, i) => {
+      const tone = personTone(pids[i]).slice(2), out = `<div class="layer" style="bottom:${b}%;height:${h}%;background:var(--${tone});z-index:${heights.length - i}">${h > 0.4 ? wave(tone + ' w' + i) : ''}</div>`;
+      b += h; return out;
+    }).join('');
+  }
+  function splitHTML(vals, pids) { return `<span class="split-row">${vals.map((v, i) => `<span class="split"><i style="background:var(${personTone(pids[i])})"></i>${v < 0 ? peso(-v) + ' over' : peso(v)}</span>`).join('')}</span>`; }
   function tankInfo(pid, month, cat) {
     const alloc = allocAmt(pid, month, cat), spent = spentOf([pid], month, cat);
     return { alloc, spent, remaining: alloc - spent };
@@ -1076,6 +1121,7 @@
       const prev = prevMonthKey(month);
       if (state.allocations.some(a => a.profileId === viewScope && a.month === prev)) banner += `<div class="banner"><span>New month, empty tanks.</span><button id="repeatPlanBtn">Repeat ${esc(monthName(prev))}'s plan</button></div>`;
     }
+    if (isT) banner += `<div class="who-key">${state.profiles.map(p => `<span><i style="background:var(${personTone(p.id)})"></i>${esc(p.name)}</span>`).join('')}</div>`;
     $('tankBanner').innerHTML = banner;
     if ($('repeatPlanBtn')) $('repeatPlanBtn').addEventListener('click', () => { repeatPlan(viewScope, prevMonthKey(month), month); });
 
@@ -1093,18 +1139,18 @@
     if (isT) {
       const parts = pids.map(pid => Math.max(0, incomeOf([pid], month) - allocTotal([pid], month)));
       const denom = Math.max(income, 1);
-      const h1 = Math.min(100, parts[0] / denom * 100), h2 = Math.min(100 - h1, (parts[1] || 0) / denom * 100);
-      incomeLiquid = `<div class="layer" style="bottom:0;height:${h1}%;background:var(--his)"></div><div class="layer" style="bottom:${h1}%;height:${h2}%;background:var(--hers)">${wave('hers')}</div>`;
-      incomeText = parts.map(peso).join(' + ');
+      let room = 100; const hs = parts.map(v => { const h = Math.min(room, v / denom * 100); room -= h; return h; });
+      incomeLiquid = stackHTML(hs, pids);
+      incomeText = splitHTML(parts, pids);
     } else {
       const pct = income > 0 ? Math.max(0, Math.min(100, unassigned / income * 100)) : 0;
       incomeLiquid = `<div class="liquid" id="incomeLiquid" style="height:${pct}%">${wave()}<span class="bubble" style="left:22%"></span><span class="bubble b2" style="left:71%"></span></div>`;
     }
-    const incomeSub = income <= 0 ? 'Log income with + to fill this tank' : unassigned < 0 ? peso(-unassigned) + ' more planned than came in' : isT ? 'ready to pour · ' + incomeText : 'ready to pour into tanks';
+    const incomeSub = income <= 0 ? 'Log income with + to fill this tank' : unassigned < 0 ? peso(-unassigned) + ' more planned than came in' : isT ? 'ready to pour' : 'ready to pour into tanks';
     $('incomeCard').innerHTML = `
       <div class="card-head"><span class="card-title">Income tank</span><span class="card-meta">${peso(income)} came in this ${esc(monthName(month))}</span></div>
-      <div class="tank big tone-ok">${incomeLiquid}
-        <div class="center-text"><div class="v" id="incomeAmt">${peso(Math.max(0, unassigned))}</div><div class="o" id="incomeSub">${esc(incomeSub)}</div></div>
+      <div class="tank big${isT ? ' together' : ' tone-ok'}">${incomeLiquid}
+        <div class="center-text"><div class="v" id="incomeAmt">${peso(Math.max(0, unassigned))}</div><div class="o" id="incomeSub">${esc(incomeSub)}</div>${isT && income > 0 ? incomeText : ''}</div>
       </div>`;
 
     // category tanks
@@ -1132,15 +1178,32 @@
     if ($('addTankBtn')) $('addTankBtn').addEventListener('click', openAddTank);
 
     // savings
-    const savings = savingsOf(pids), hist = savingsHistory(pids);
-    const lastRow = hist[hist.length - 1];
-    const savePct = savings > 0 ? Math.min(92, 25 + Math.log10(Math.max(10, savings)) * 12) : 6;
+    const hist = savingsHistory(pids), lastRow = hist[hist.length - 1];
+    let saveInner, saveTotal;
+    if (isT) {
+      const parts = pids.map(pid => savingsOf([pid]) + allocAmt(pid, month, SAVE));
+      saveTotal = parts.reduce((a, b) => a + b, 0);
+      const pos = parts.map(v => Math.max(0, v)), tot = pos.reduce((a, b) => a + b, 0);
+      saveInner = stackHTML(pos.map(v => tot > 0 ? v / tot * 72 : 0), pids) +
+        `<div class="tank-text"><div class="v">${peso(saveTotal)}</div>${splitHTML(parts, pids)}</div>`;
+    } else {
+      const g = saveGeom(viewScope, month), pct = g.pct(g.pour);
+      saveTotal = g.past + g.pour;
+      saveInner = `<div class="liquid" data-liquid style="height:${pct}%">${wave()}<span class="bubble" style="left:40%"></span></div>
+        ${g.p0 ? `<div class="save-base" style="height:${g.p0}%"></div>` : ''}
+        ${g.avail > 0 ? `<div class="grab" data-grab style="bottom:${grabPos(pct)}"><div class="handle"></div></div>` : ''}
+        <div class="tank-text"><div class="v" data-left>${peso(saveTotal)}</div><div class="o" data-of>${saveSub(g.pour, month)}</div></div>`;
+    }
     $('savingsCard').innerHTML = `
-      <div class="card-head"><span class="card-title">${isT ? 'Shared savings' : 'Savings'}</span><span class="card-title" style="color:var(--text)">${peso(savings)}</span></div>
-      <button class="tank big tone-save" id="savingsTank" style="height:64px;width:100%;cursor:pointer" aria-label="Savings history">
-        <div class="liquid" style="height:${savePct}%">${wave()}</div></button>
+      <div class="card-head"><span class="card-title">${isT ? 'Savings, together' : 'Savings'}</span><span class="card-meta">${lastRow ? (lastRow.amount >= 0 ? '+' : '−') + peso(Math.abs(lastRow.amount)) + ' from ' + esc(monthName(lastRow.month)) : ''}</span></div>
+      <div class="tank big tone-save save-tank${isT ? ' together' : ''}" id="savingsTank" data-save role="button" tabindex="0" aria-label="Savings: ${esc(peso(saveTotal))}. Tap for history.">${saveInner}</div>
       ${''}`;
-    $('savingsTank').addEventListener('click', openSavings);
+    $('savingsTank').addEventListener('click', () => { if (Date.now() - lastDragEnd < 400) return; openSavings(); });
+    const sg = $('savingsTank').querySelector('.grab');
+    if (sg) {
+      sg.addEventListener('pointerdown', e => startDrag(e, SAVE, $('savingsTank')));
+      sg.addEventListener('pointermove', moveDrag); sg.addEventListener('pointerup', endDrag); sg.addEventListener('pointercancel', endDrag);
+    }
 
     ''
   }
@@ -1150,13 +1213,9 @@
     const cat = catById(t.cat);
     const label = `<div class="tank-text"><div class="n">${ci(cat)}${esc(cat.name)}</div><div class="v" data-left>${t.remaining < 0 ? peso(-t.remaining) + ' over' : peso(t.remaining)}</div><div class="o" data-of>${t.alloc ? 'left of ' + peso(t.alloc) : 'no budget yet'}</div></div>`;
     if (isT) {
-      let bottom = 0, layers = '';
-      t.per.forEach((p, i) => {
-        const h = Math.max(0, p.remaining) / sc * 100;
-        layers += `<div class="layer" style="bottom:${bottom}%;height:${h}%;background:var(${i === 0 ? '--his' : '--hers'})">${i === t.per.length - 1 ? wave(i === 0 ? 'his' : 'hers') : ''}</div>`;
-        bottom += h;
-      });
-      return `<div class="tank-cell"><div class="stub"></div><div class="tank${t.remaining < 0 ? ' over' : ''}" data-cat="${t.cat}" role="button" tabindex="0" aria-label="${esc(cat.name)}: ${esc(peso(t.remaining))} left">${layers}<div class="budget-line" style="bottom:${Math.min(98, t.alloc / sc * 100)}%"></div>${label}</div></div>`;
+      const pids = scopeProfileIds(), layers = stackHTML(t.per.map(p => Math.max(0, p.remaining) / sc * 100), pids);
+      const tlabel = `<div class="tank-text"><div class="n">${ci(cat)}${esc(cat.name)}</div><div class="v">${t.remaining < 0 ? peso(-t.remaining) + ' over' : peso(t.remaining)}</div>${splitHTML(t.per.map(p => p.remaining), pids)}</div>`;
+      return `<div class="tank-cell"><div class="stub"></div><div class="tank together${t.remaining < 0 ? ' over' : ''}" data-cat="${t.cat}" role="button" tabindex="0" aria-label="${esc(cat.name)}: ${esc(peso(t.remaining))} left of ${esc(peso(t.alloc))}">${layers}<div class="budget-line" style="bottom:${Math.min(98, t.alloc / sc * 100)}%"></div>${tlabel}</div></div>`;
     }
     const rem = Math.max(0, t.remaining), pct = rem / sc * 100;
     return `<div class="tank-cell"><div class="stub" data-stub="${t.cat}"></div>
@@ -1169,18 +1228,22 @@
       <label class="sr-only">Money left in ${esc(cat.name)}<input type="range" data-cat="${t.cat}" min="0" max="${sc}" step="50" value="${rem}"></label></div>`;
   }
 
+  function saveSub(pour, month) { return pour > 0 ? peso(pour) + ' set aside in ' + monthName(month) : 'nothing set aside this month'; }
   // ---------- pouring by drag ----------
   // The handle rides the water's surface but stays fully inside the tank, so an empty or full tank can still be grabbed.
   const grabPos = pct => `clamp(11px, ${pct}%, calc(100% - 11px))`;
   let drag = null, lastDragEnd = 0, dragFrame = 0;
-  function pointerRemaining(y) { const r = drag.rect; return Math.max(0, Math.min(1, (r.bottom - y) / r.height)) * drag.scale; }
+  function pointerRemaining(y) { const r = drag.rect; return drag.geom.val(Math.max(0, Math.min(1, (r.bottom - y) / r.height))); }
   function startDrag(e, cat, tankEl) {
     if (viewScope === 'combined') return;
     e.preventDefault(); e.stopPropagation();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-    const month = monthKey(), info = tankInfo(viewScope, month, cat);
+    const month = monthKey(), isSave = cat === SAVE, g = isSave ? saveGeom(viewScope, month) : null;
+    const info = isSave ? { alloc: g.pour, spent: 0 } : tankInfo(viewScope, month, cat);
     const income = incomeOf([viewScope], month), others = allocTotal([viewScope], month) - info.alloc;
-    drag = { cat, month, tankEl, rect: tankEl.getBoundingClientRect(), scale: tankScale, startAlloc: info.alloc, alloc: info.alloc, spent: info.spent,
+    const sc = tankScale;
+    drag = { cat, isSave, month, tankEl, rect: tankEl.getBoundingClientRect(), startAlloc: info.alloc, alloc: info.alloc, spent: info.spent,
+      geom: isSave ? g : { val: f => f * sc, pct: v => v / sc * 100 }, past: isSave ? g.past : 0,
       min: Math.min(info.spent, info.alloc), max: Math.max(info.alloc, income - others), income, others, y0: e.clientY, y: e.clientY, moved: false,
       els: { liquid: tankEl.querySelector('[data-liquid]'), grab: tankEl.querySelector('[data-grab]'), line: tankEl.querySelector('[data-line]'), left: tankEl.querySelector('[data-left]'), of: tankEl.querySelector('[data-of]') } };
     drag.offset = pointerRemaining(e.clientY) - Math.max(0, info.alloc - info.spent);
@@ -1205,15 +1268,20 @@
     paintDrag(Math.max(0, visRem));
   }
   function paintDrag(visRem) {
-    const d = drag, el = d.tankEl, E = d.els, rem = d.alloc - d.spent, pct = visRem / d.scale * 100;
+    const d = drag, el = d.tankEl, E = d.els, rem = d.alloc - d.spent, pct = d.geom.pct(visRem);
     E.liquid.style.height = pct + '%';
     E.grab.style.bottom = grabPos(pct);
-    E.line.style.bottom = Math.min(98, d.alloc / d.scale * 100) + '%';
-    E.left.textContent = rem < 0 ? peso(-rem) + ' over' : peso(rem);
-    E.of.textContent = d.alloc ? 'left of ' + peso(d.alloc) : 'no budget yet';
-    const tone = 'tone-' + toneOf(d.alloc, rem);
-    if (!el.classList.contains(tone)) { el.classList.remove('tone-ok', 'tone-low', 'tone-out'); el.classList.add(tone); }
-    el.classList.toggle('over', rem < 0);
+    if (d.isSave) {
+      E.left.textContent = peso(d.past + d.alloc);
+      E.of.textContent = saveSub(d.alloc, d.month);
+    } else {
+      E.line.style.bottom = Math.min(98, d.geom.pct(d.alloc)) + '%';
+      E.left.textContent = rem < 0 ? peso(-rem) + ' over' : peso(rem);
+      E.of.textContent = d.alloc ? 'left of ' + peso(d.alloc) : 'no budget yet';
+      const tone = 'tone-' + toneOf(d.alloc, rem);
+      if (!el.classList.contains(tone)) { el.classList.remove('tone-ok', 'tone-low', 'tone-out'); el.classList.add(tone); }
+      el.classList.toggle('over', rem < 0);
+    }
     const visAlloc = d.spent + visRem, unassigned = d.income - d.others - d.alloc;
     $('incomeAmt').textContent = peso(Math.max(0, unassigned));
     if ($('incomeLiquid')) $('incomeLiquid').style.height = (d.income > 0 ? Math.max(0, Math.min(100, (d.income - d.others - visAlloc) / d.income * 100)) : 0) + '%';
@@ -1228,9 +1296,12 @@
   function showPour() {
     const box = document.querySelector('.plumbing').getBoundingClientRect(), inc = $('incomeCard').querySelector('.tank').getBoundingClientRect(), t = drag.rect;
     const sx = box.width / 2, sy = inc.bottom - box.top - 2;
-    const ty = t.top - box.top + t.height / 2, left = t.left + t.width / 2 < box.left + sx;
-    const tx = left ? t.right - box.left : t.left - box.left, r = Math.min(10, Math.abs(tx - sx));
-    const d = `M${sx} ${sy} V${ty - r} Q${sx} ${ty} ${sx + (left ? -r : r)} ${ty} H${tx}`;
+    let ty = t.top - box.top + t.height / 2, d;
+    if (drag.isSave) { ty = t.top - box.top; d = `M${sx} ${sy} V${ty}`; }
+    else {
+      const left = t.left + t.width / 2 < box.left + sx, tx = left ? t.right - box.left : t.left - box.left, r = Math.min(10, Math.abs(tx - sx));
+      d = `M${sx} ${sy} V${ty - r} Q${sx} ${ty} ${sx + (left ? -r : r)} ${ty} H${tx}`;
+    }
     $('pourBase').setAttribute('d', d); $('pourFlow').setAttribute('d', d);
     const len = $('pourBase').getTotalLength ? $('pourBase').getTotalLength() : 600;
     const svg = $('pourSvg');
@@ -1238,7 +1309,7 @@
     svg.classList.remove('on', 'back', 'idle'); void svg.getBoundingClientRect(); svg.classList.add('on', 'idle');
     document.querySelector('.plumbing').classList.add('pouring');
     const tag = $('pourTag');
-    tag.style.left = sx + 'px'; tag.style.top = (ty - 30) + 'px'; tag.textContent = '';
+    tag.style.left = sx + 'px'; tag.style.top = (drag.isSave ? ty + 10 : ty - 30) + 'px'; tag.textContent = '';
   }
   function hidePour() { $('pourSvg').classList.remove('on'); document.querySelector('.plumbing').classList.remove('pouring'); $('pourTag').textContent = ''; }
   function endDrag() {
@@ -1248,7 +1319,7 @@
     hidePour();
     if (d.moved) {
       lastDragEnd = Date.now();
-      if (d.alloc !== d.startAlloc) { setAlloc(viewScope, d.month, d.cat, d.alloc); persist(); }
+      if (d.alloc !== d.startAlloc) { if (d.isSave && !d.alloc) removeAlloc(viewScope, d.month, SAVE); else setAlloc(viewScope, d.month, d.cat, d.alloc); persist(); }
     }
     if (pendingServerVal) { const v = pendingServerVal; pendingServerVal = null; applyServer(v); }
     else if (d.moved) renderTanks(); // a plain tap leaves the DOM alone so its click still opens the tank
@@ -1285,11 +1356,12 @@
     modalBody().innerHTML = `
       <div class="modal-title" style="color:var(--text);font-weight:800">${ci(c, 26)}${esc(c.name)}</div>
       <div class="tank big tone-${toneOf(alloc, rem)}" style="height:220px">
-        <div class="liquid" style="height:${pct}%">${wave()}</div>
-        <div style="position:absolute;right:12px;top:12px;font-size:14px;font-style:italic;color:var(--in)">${alloc ? peso(alloc) + ' budget' : 'no budget yet'}</div>
-        <div style="position:absolute;left:16px;top:40px;color:var(--in)"><div style="font-weight:800;font-size:42px;line-height:1">${rem < 0 ? peso(-rem) + ' over' : peso(rem)}</div><div style="font-size:16px;font-style:italic;margin-top:6px">left for ${daysLeft} more ${daysLeft === 1 ? 'day' : 'days'}</div></div>
+        ${isT ? stackHTML(pids.map(p => { const i = tankInfo(p, month, cat); return alloc > 0 ? Math.max(0, i.remaining) / alloc * 100 : 0; }), pids) : `<div class="liquid" style="height:${pct}%">${wave()}</div>`}
+        <div style="position:absolute;right:12px;top:12px;font-size:14px;font-style:italic;color:var(--in);z-index:5">${alloc ? peso(alloc) + ' budget' : 'no budget yet'}</div>
+        <div style="position:absolute;left:16px;top:40px;color:var(--in);z-index:5"><div style="font-weight:800;font-size:42px;line-height:1">${rem < 0 ? peso(-rem) + ' over' : peso(rem)}</div><div style="font-size:16px;font-style:italic;margin-top:6px">left for ${daysLeft} more ${daysLeft === 1 ? 'day' : 'days'}</div></div>
       </div>
       <div class="stat-grid"><div class="stat"><div class="l">Spent so far</div><div class="v">${peso(spent)}</div></div><div class="stat"><div class="l">Easy pace</div><div class="v">${rem > 0 ? peso(Math.floor(rem / daysLeft)) + ' a day' : '—'}</div></div></div>
+      ${isT ? `<div class="person-rows">${pids.map(pid => { const i = tankInfo(pid, month, cat), p = profileById(pid); return `<div class="prow">${mono(p, 30)}<div class="pmain"><div class="ptop"><b>${esc(p.name)}</b><span>${leftText(i.remaining)}<em> left of ${peso(i.alloc)}</em></span></div><div class="bar"><i style="width:${i.alloc > 0 ? Math.max(0, Math.min(100, i.remaining / i.alloc * 100)).toFixed(1) : 0}%;background:var(${personTone(pid)})"></i></div></div></div>`; }).join('')}</div>` : ''}
       ${isT ? '' : `
       <div class="field-row"><button class="modal-save" style="flex:1;min-height:48px;border:none;border-radius:12px;font-weight:700" id="tdTopUp">${ico('up', 18)} Top up</button><button class="modal-cancel" style="flex:1;min-height:48px;border:none;border-radius:12px;font-weight:700" id="tdMove" ${otherTanks.length ? '' : 'disabled'}>${ico('swap', 18)} Move to a tank</button></div>
       <div id="tdForm"></div>
@@ -1333,11 +1405,22 @@
   }
 
   function openSavings() {
-    const pids = scopeProfileIds(), hist = savingsHistory(pids).slice().reverse();
-    modalBody().innerHTML = `<div class="modal-title">${viewScope === 'combined' ? 'Shared savings' : 'Savings'}</div>
-      <div class="stat" style="margin-bottom:14px"><div class="l">Total so far</div><div class="v">${peso(savingsOf(pids))}</div></div>
-      ${hist.length ? hist.map(r => `<div class="list-row" style="cursor:default"><span class="t">${esc(monthName(r.month, true))}</span><span class="entry-amt ${r.amount >= 0 ? 'income' : 'expense'}">${r.amount >= 0 ? '+' : '−'}${peso(Math.abs(r.amount))}</span></div>`).join('') : '<div class="empty-state">Your first leftovers arrive when this month ends.</div>'}
+    const isT = viewScope === 'combined', pids = scopeProfileIds(), month = monthKey(), hist = savingsHistory(pids).slice().reverse();
+    const g = isT ? null : saveGeom(viewScope, month);
+    modalBody().innerHTML = `<div class="modal-title">${isT ? 'Savings, together' : 'Savings'}</div>
+      <div class="stat-grid" style="margin-top:0"><div class="stat"><div class="l">Saved so far</div><div class="v">${peso(savingsOf(pids))}</div></div><div class="stat"><div class="l">Set aside in ${esc(monthName(month))}</div><div class="v">${peso(pourOf(pids, month))}</div></div></div>
+      ${isT ? `<div class="person-rows">${pids.map(pid => { const p = profileById(pid); return `<div class="prow">${mono(p, 30)}<div class="pmain"><div class="ptop"><b>${esc(p.name)}</b><span>${peso(savingsOf([pid]))}<em> + ${peso(allocAmt(pid, month, SAVE))} this month</em></span></div></div></div>`; }).join('')}</div>` : `
+      <div class="field-label">Set aside this month (up to ${peso(g.avail)})</div>
+      <div class="field-row"><input type="number" inputmode="decimal" id="svAmt" value="${g.pour || ''}" placeholder="₱0" aria-label="Amount to set aside"><button class="modal-save" style="flex:0 0 96px;border:none;border-radius:10px;font-weight:700" id="svSet">Set</button></div>`}
+      <div class="h2" style="margin:16px 0 10px">By month</div>
+      ${hist.length ? hist.map(r => `<div class="list-row" style="cursor:default"><span class="t">${esc(monthName(r.month, true))}</span><span class="entry-amt ${r.amount >= 0 ? 'income' : 'expense'}">${r.amount >= 0 ? '+' : '−'}${peso(Math.abs(r.amount))}</span></div>`).join('') : '<div class="empty-state" style="padding:16px">Your first month lands here when ' + esc(monthName(month)) + ' ends.</div>'}
       ${''}`;
+    if (!isT) $('svSet').addEventListener('click', () => {
+      const v = round2(parseFloat($('svAmt').value) || 0);
+      if (v < 0 || v > g.avail) { $('svAmt').focus(); toast('You can set aside up to ' + peso(g.avail) + ' this month.'); return; }
+      if (v) setAlloc(viewScope, month, SAVE, v); else removeAlloc(viewScope, month, SAVE);
+      persist(); renderAll(); openSavings();
+    });
     openOverlay();
   }
 
@@ -1351,12 +1434,14 @@
     if (!hadPlan) return;
     const leftovers = tankCats([pid], prev).map(cat => ({ cat, left: allocAmt(pid, prev, cat) - spentOf([pid], prev, cat) })).sort((a, b) => b.left - a.left);
     const unassigned = incomeOf([pid], prev) - allocTotal([pid], prev);
-    const net = incomeOf([pid], prev) - expenseOf([pid], prev);
+    const net = incomeOf([pid], prev) - expenseOf([pid], prev), setAside = allocAmt(pid, prev, SAVE);
     modalBody().innerHTML = `
       <div class="field-label" style="color:var(--iris)">${esc(monthName(month))} 1</div>
       <div style="font-size:30px;font-weight:800;line-height:1.15;margin-bottom:8px">${esc(monthName(prev))}'s wrapped up, ${esc(profileById(pid).name)}</div>
       <p style="color:var(--sub);margin-bottom:14px">${net >= 0 ? 'Here\'s what flowed into savings.' : 'You went a little over this time — here\'s how it shook out.'}</p>
       <div class="stat" style="margin-bottom:12px"><div class="l">${net >= 0 ? 'Added to savings' : 'Taken from savings'}</div><div class="v" style="color:var(${net >= 0 ? '--plus' : '--minus'})">${net >= 0 ? '+' : '−'}${peso(Math.abs(net))}</div></div>
+      ${setAside > 0 ? `<div class="list-row" style="cursor:default"><span class="t">${ico('piggy', 15, 'gi')}Set aside</span><span class="entry-amt income">+${peso(setAside)}</span></div>` : ''}
+      ${setAside > 0 && net < setAside ? `<div class="list-row" style="cursor:default"><span class="t">Spending ate into it</span><span class="entry-amt expense">−${peso(Math.min(setAside, setAside - net))}</span></div>` : ''}
       ${leftovers.map(l => `<div class="list-row" style="cursor:default"><span class="t">${ci(catById(l.cat))}${esc(catById(l.cat).name)}</span><span class="entry-amt ${l.left >= 0 ? 'income' : 'expense'}">${l.left >= 0 ? '+' + peso(l.left) : peso(-l.left) + ' over'}</span></div>`).join('')}
       ${unassigned > 0 ? `<div class="list-row" style="cursor:default"><span class="t">Never poured</span><span class="entry-amt income">+${peso(unassigned)}</span></div>` : ''}
       <button class="primary-btn" id="wrapRepeat" style="margin-top:14px">Fill ${esc(monthName(month))}'s tanks like ${esc(monthName(prev))}</button>
@@ -2419,7 +2504,7 @@
       add(month, 'p2', 'expense', p ? 2300 : 1900, sub('Groceries'), 'w5', 5);
       add(month, 'p2', 'expense', p ? 3100 : 2800, 'c4', 'w2', 6);
       add(month, 'p2', 'expense', p ? 1800 : 1600, 'c6', 'w2', 7);
-      [['c3', 12000, 8000], ['c1', 8000, 3800], ['c4', 4000, 4000], ['c2', 3000, 0], ['c6', 2500, 2500], ['c5', 1500, 1000]].forEach(([cat, a, b]) => {
+      [[SAVE, 6000, 4000], ['c3', 12000, 8000], ['c1', 8000, 3800], ['c4', 4000, 4000], ['c2', 3000, 0], ['c6', 2500, 2500], ['c5', 1500, 1000]].forEach(([cat, a, b]) => {
         s.allocations.push({ id: allocId('p1', month, cat), profileId: 'p1', month, categoryId: cat, amount: a, ord: 0 });
         if (b) s.allocations.push({ id: allocId('p2', month, cat), profileId: 'p2', month, categoryId: cat, amount: b, ord: 0 });
       });
