@@ -383,8 +383,12 @@
   /* Savings tank: past savings band + this month's pour, draggable like the others */
   .save-tank{height:124px;cursor:pointer}
   .save-tank.together{height:96px}
-  .save-base{position:absolute;left:0;right:0;bottom:0;background:var(--iris);opacity:.18;pointer-events:none;z-index:1}
   .save-tank .tank-text .v{font-size:26px}
+
+  .save-line{position:absolute;left:0;right:0;height:0;border-top:1.5px solid color-mix(in srgb,var(--iris) 60%,transparent);pointer-events:none;z-index:2}
+  .save-line span{position:absolute;left:12px;top:3px;font-size:12px;font-style:italic;color:var(--in);white-space:nowrap}
+  .no-anim,.no-anim *{transition:none!important}
+  .regliding .liquid,.regliding .layer,.regliding .grab,.regliding .budget-line,.regliding .save-line{transition:height .55s cubic-bezier(.22,.8,.24,1),bottom .55s cubic-bezier(.22,.8,.24,1)!important}
 
 </style>
 </head>
@@ -1074,11 +1078,11 @@
   // at month end Savings still grows by income minus spending, and what was set aside is part of that, not extra.
   const SAVE = '__savings';
   function pourOf(pids, month) { return pids.reduce((s, p) => s + allocAmt(p, month, SAVE), 0); }
-  // Savings tank geometry: past savings fill a fixed band at the bottom; the rest of the height is this month's pourable range.
+  // Savings tank geometry: past savings sit as a labelled baseline near the bottom; above it is this month's pourable range.
   function saveGeom(pid, month) {
     const past = savingsOf([pid]), pour = allocAmt(pid, month, SAVE);
     const avail = Math.max(pour, pour + incomeOf([pid], month) - allocTotal([pid], month));
-    const p0 = past > 0 ? Math.max(10, Math.min(35, past / (past + Math.max(avail, 1)) * 100)) : 0, span = 94 - p0;
+    const p0 = past > 0 ? 18 : 0, span = 94 - p0; // what's already saved is the floor of the tank; this month pours in above it
     return { past, pour, avail, p0, val: f => avail > 0 ? Math.max(0, (f * 100 - p0) / span * avail) : 0, pct: v => p0 + (avail > 0 ? Math.max(0, Math.min(1, v / avail)) * span : 0) };
   }
   // Stacked layers for the Together view: one per person, each with its own wave.
@@ -1103,7 +1107,32 @@
 
   // ---------- tanks view ----------
   let tankScale = 13000;
+  // When a re-render changes a tank's scale (e.g. pouring past the top makes every tank roomier), glide to the new levels instead of jumping.
+  const GEO_SEL = '[data-liquid], .liquid, .layer, [data-grab], .budget-line, .save-line';
+  function tankGeometry() {
+    const out = {};
+    $$('#view-tanks .tank').forEach(el => { const key = el.dataset.cat || el.id; if (key) out[key] = $$(GEO_SEL, el).map(n => ({ h: n.style.height, b: n.style.bottom })); });
+    return out;
+  }
+  function glideFrom(prev) {
+    if (reduceMotion() || drag) return;
+    const moves = [];
+    $$('#view-tanks .tank').forEach(el => {
+      const old = prev[el.dataset.cat || el.id]; if (!old) return;
+      const nodes = $$(GEO_SEL, el); if (nodes.length !== old.length) return;
+      nodes.forEach((n, i) => { const now = { h: n.style.height, b: n.style.bottom }; if (now.h === old[i].h && now.b === old[i].b) return; moves.push([n, now]); n.style.height = old[i].h; n.style.bottom = old[i].b; });
+    });
+    if (!moves.length) return;
+    const root = $('view-tanks'); root.classList.add('no-anim'); void root.offsetHeight; root.classList.remove('no-anim');
+    root.classList.add('regliding');
+    moves.forEach(([n, now]) => { n.style.height = now.h; n.style.bottom = now.b; });
+    clearTimeout(glideFrom.t); glideFrom.t = setTimeout(() => root.classList.remove('regliding'), 700);
+  }
   function renderTanks() {
+    const prevGeo = tankGeometry();
+    try { renderTanksNow(); } finally { glideFrom(prevGeo); }
+  }
+  function renderTanksNow() {
     const isT = viewScope === 'combined', pids = scopeProfileIds(), month = monthKey();
     const prof = profileById(viewScope);
     $('todayLabel').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -1149,7 +1178,7 @@
     const incomeSub = income <= 0 ? 'Log income with + to fill this tank' : unassigned < 0 ? peso(-unassigned) + ' more planned than came in' : isT ? 'ready to pour' : 'ready to pour into tanks';
     $('incomeCard').innerHTML = `
       <div class="card-head"><span class="card-title">Income tank</span><span class="card-meta">${peso(income)} came in this ${esc(monthName(month))}</span></div>
-      <div class="tank big${isT ? ' together' : ' tone-ok'}">${incomeLiquid}
+      <div class="tank big${isT ? ' together' : ' tone-ok'}" id="incomeTank">${incomeLiquid}
         <div class="center-text"><div class="v" id="incomeAmt">${peso(Math.max(0, unassigned))}</div><div class="o" id="incomeSub">${esc(incomeSub)}</div>${isT && income > 0 ? incomeText : ''}</div>
       </div>`;
 
@@ -1190,7 +1219,7 @@
       const g = saveGeom(viewScope, month), pct = g.pct(g.pour);
       saveTotal = g.past + g.pour;
       saveInner = `<div class="liquid" data-liquid style="height:${pct}%">${wave()}<span class="bubble" style="left:40%"></span></div>
-        ${g.p0 ? `<div class="save-base" style="height:${g.p0}%"></div>` : ''}
+        ${g.p0 ? `<div class="save-line" style="bottom:${g.p0}%"><span>${peso(g.past)} saved</span></div>` : ''}
         ${g.avail > 0 ? `<div class="grab" data-grab style="bottom:${grabPos(pct)}"><div class="handle"></div></div>` : ''}
         <div class="tank-text"><div class="v" data-left>${peso(saveTotal)}</div><div class="o" data-of>${saveSub(g.pour, month)}</div></div>`;
     }
