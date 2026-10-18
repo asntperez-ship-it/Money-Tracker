@@ -27,9 +27,11 @@
   /* ===== Theme: AnuPpuccin — Rosé Pine Dawn (light) + Frappé (dark), custom teals ===== */
   .t-light{--ground:#F2E9E1;--card:#FFFAF3;--sunk:#F4EDE8;--line:#DFDAD9;--line2:#CECACD;--text:#575279;--sub:#64607D;--in:#45405F;--accent:#18789E;--on-accent:#FFFAF3;--peach:#C66A52;--love:#B4637A;--iris:#6D5889;--ok:#B7D5D8;--low:#F3CF97;--out:#E6B3BF;--save:#D3C6E1;--save2:#E6DDF0;--his:#9CBFD3;--hers:#F0CBC6;--plus:#286983;--minus:#B4637A;--move:#6D5889;--sel:#E3EEF0;--scrim:rgba(87,82,121,.38);--shadow:rgba(87,82,121,.10);--bubble:rgba(255,255,255,.75);color-scheme:light}
   .t-dark{--ground:#232634;--card:#303446;--sunk:#292C3C;--line:#414559;--line2:#51576D;--text:#C6D0F5;--sub:#A5ADCE;--in:#EEF1FF;--accent:#11B7C5;--on-accent:#232634;--peach:#EF9F76;--love:#E78284;--iris:#CA9EE6;--ok:#24687A;--low:#6E6556;--out:#79535F;--save:#6E5E86;--save2:#5A4E70;--his:#46557A;--hers:#8A6356;--plus:#A6D189;--minus:#E78284;--move:#CA9EE6;--sel:#28495A;--scrim:rgba(0,0,0,.55);--shadow:rgba(0,0,0,.28);--bubble:rgba(255,255,255,.3);color-scheme:dark}
+  /* iPhone safe areas (notch / Dynamic Island on top, home indicator at the bottom), as variables so tests can simulate them */
+  :root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html,body{overflow-x:hidden;max-width:100vw}
-  body{background:var(--ground);color:var(--text);font-family:ui-serif,'New York','Newsreader',Georgia,serif;min-height:100vh;padding:calc(18px + env(safe-area-inset-top)) 16px calc(110px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased;font-size:16px}
+  body{background:var(--ground);color:var(--text);font-family:ui-serif,'New York','Newsreader',Georgia,serif;min-height:100vh;padding:calc(18px + var(--sat)) 16px calc(110px + var(--sab));-webkit-font-smoothing:antialiased;font-size:16px}
   button,input,select,textarea{font:inherit;color:inherit}
   a{color:var(--accent)}
   .wrap{max-width:480px;margin:0 auto}
@@ -184,7 +186,7 @@
   .wish-name{font-size:16px;font-weight:700}
   .wish-name.done,.req-title.done{text-decoration:line-through;color:var(--sub)}
   .wish-link{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;font-style:italic}
-  .wish-check{width:30px;height:30px;border-radius:50%;border:2px solid var(--line2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:transparent;background:none;font-weight:800}
+  .wish-check{width:40px;height:40px;border-radius:50%;border:2px solid var(--line2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:transparent;background:none;font-weight:800}
   .wish-check.done{background:var(--plus);border-color:var(--plus);color:var(--card)}
   .req-card{display:flex;gap:6px;align-items:flex-start;background:var(--card);border-radius:14px;padding:12px 8px 12px 14px;margin-bottom:8px}
   .req-card .main{flex:1;min-width:0;border:none;background:none;text-align:left;cursor:pointer}
@@ -195,7 +197,7 @@
   .total-card .v{font-weight:800;font-size:28px}
 
   /* tab bar */
-  .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--accent);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;padding:10px 6px calc(10px + env(safe-area-inset-bottom));z-index:50}
+  .tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--accent);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;padding:10px 6px calc(10px + var(--sab));z-index:50}
   .tab-btn{justify-self:center;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 10px;border-radius:10px;border:none;background:transparent;color:var(--on-accent);font-size:12px;font-weight:600;cursor:pointer;position:relative}
   .tab-btn.active{background:var(--card);color:var(--text);font-weight:700}
   .fab{justify-self:center;margin-top:-30px;width:62px;height:62px;border-radius:50%;background:var(--card);border:4px solid var(--accent);display:flex;align-items:center;justify-content:center;color:var(--accent);cursor:pointer;box-shadow:0 4px 14px var(--shadow)}
@@ -203,7 +205,7 @@
   /* sheets (modals) */
   .modal-overlay{display:none;position:fixed;inset:0;background:var(--scrim);z-index:100;align-items:flex-end;justify-content:center;transition:opacity .24s ease}
   .modal-overlay.active{display:flex}
-  .modal{background:var(--card);border-radius:20px 20px 0 0;padding:0 18px calc(22px + env(safe-area-inset-bottom));width:100%;max-width:480px;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -8px 30px var(--shadow);transition:transform .34s cubic-bezier(.2,.9,.25,1);will-change:transform}
+  .modal{background:var(--card);border-radius:20px 20px 0 0;padding:0 18px calc(22px + var(--sab));width:100%;max-width:480px;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 -8px 30px var(--shadow);transition:transform .34s cubic-bezier(.2,.9,.25,1);will-change:transform}
   .modal.dragging-sheet{transition:none}
   .grabber{position:sticky;top:0;background:var(--card);padding:10px 0 8px;display:flex;justify-content:center;touch-action:none;cursor:grab;z-index:2}
   .grabber span{width:44px;height:5px;border-radius:3px;background:var(--line2)}
@@ -223,7 +225,7 @@
   .toggle-btn.active[data-type=expense]{color:var(--minus)}.toggle-btn.active[data-type=income]{color:var(--plus)}.toggle-btn.active[data-type=transfer]{color:var(--move)}
   .big-amount{display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 14px}
   .big-amount input{font-size:44px!important;font-weight:800;text-align:center;border:none!important;background:transparent!important;max-width:230px;padding:0!important}
-  .big-amount select{width:auto;min-height:38px;font-size:14px;padding:6px 28px 6px 10px}
+  .big-amount select{width:auto;min-height:44px;font-size:16px;padding:6px 28px 6px 10px}
   .tank-pick{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
   .tank-pick::-webkit-scrollbar{display:none}
   .pick{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:9px 12px 9px 9px;border-radius:12px;border:2px solid var(--line);background:var(--card);cursor:pointer;text-align:left}
@@ -266,7 +268,7 @@
   .who{display:flex;gap:6px;margin-bottom:12px}
 
   /* login */
-  .setup-overlay{position:fixed;inset:0;background:var(--ground);z-index:200;overflow-y:auto;padding:calc(40px + env(safe-area-inset-top)) 20px 40px;display:none}
+  .setup-overlay{position:fixed;inset:0;background:var(--ground);z-index:200;overflow-y:auto;padding:calc(40px + var(--sat)) 20px 40px;display:none}
   .setup-overlay.active{display:block}
   .setup-wrap{max-width:420px;margin:0 auto}
   .setup-title{font-size:32px;font-weight:800;margin-bottom:8px}
@@ -277,7 +279,7 @@
   @media (prefers-reduced-motion: reduce){.wave,.bubble{animation:none}.liquid,.handle,.grab,.layer,.sortable-item,.modal{transition:none}}
 
   .armed{background:var(--minus)!important;color:var(--on-accent)!important}
-  .toast{position:fixed;left:50%;bottom:calc(104px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:min(92vw,420px);background:var(--text);color:var(--ground);padding:12px 16px;border-radius:12px;font-size:15px;line-height:1.35;box-shadow:0 6px 20px var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300}
+  .toast{position:fixed;left:50%;bottom:calc(104px + var(--sab));transform:translate(-50%,12px);max-width:min(92vw,420px);background:var(--text);color:var(--ground);padding:12px 16px;border-radius:12px;font-size:15px;line-height:1.35;box-shadow:0 6px 20px var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:300}
   .toast.show{opacity:1;transform:translate(-50%,0)}
   input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield;appearance:textfield}
@@ -389,6 +391,38 @@
   .save-line span{position:absolute;left:12px;top:3px;font-size:12px;font-style:italic;color:var(--in);white-space:nowrap}
   .no-anim,.no-anim *{transition:none!important}
   .regliding .liquid,.regliding .layer,.regliding .grab,.regliding .budget-line,.regliding .save-line{transition:height .55s cubic-bezier(.22,.8,.24,1),bottom .55s cubic-bezier(.22,.8,.24,1)!important}
+
+  /* ===== phone fit (iPhone SE → Pro Max), portrait first ===== */
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{min-height:100dvh;padding-left:max(16px,var(--sal));padding-right:max(16px,var(--sar))}
+  button,a,[role=button],input,select{touch-action:manipulation}
+  .hello h1{font-size:clamp(26px,8vw,32px)}
+  .page-title{font-size:clamp(26px,7.6vw,30px)}
+  .tank-grid{column-gap:clamp(22px,8vw,36px)}
+  .tank-text .v{font-size:clamp(19px,6vw,23px)}
+  .save-tank .tank-text .v{font-size:clamp(22px,6.8vw,26px)}
+  .center-text .v{font-size:clamp(30px,9.4vw,36px)}
+  .big-amount input{font-size:clamp(34px,11vw,44px)!important;max-width:min(230px,58vw)}
+  .total-card .v{font-size:clamp(24px,7vw,28px)}
+  .modal{max-height:92vh;max-height:calc(100dvh - var(--sat) - 12px);padding-left:max(18px,var(--sal));padding-right:max(18px,var(--sar))}
+  .tabbar{padding-left:max(6px,var(--sal));padding-right:max(6px,var(--sar))}
+  .chip{min-height:40px;display:inline-flex;align-items:center;gap:2px}
+  .link-btn{min-height:44px;display:inline-flex;align-items:center;gap:5px}
+  #loginToggleBtn,#forgotPassBtn{display:flex!important;justify-content:center;width:100%}
+  .wish-info{min-height:44px}
+  .wish-link{min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+  .scope-tabs button{height:42px}
+  @media (max-width:359px){
+    .tab-btn{padding:5px 6px;font-size:11px}
+    .card{padding:12px}
+    .tank-text{left:10px;right:8px}
+    .scope-tabs button{font-size:14px}
+  }
+  /* landscape phones: keep the sheet from covering the whole screen edge to edge */
+  @media (orientation:landscape) and (max-height:500px){ .modal{max-width:560px} .tabbar{max-width:560px} }
+  .card-title{white-space:nowrap}
+  .card-head{flex-wrap:wrap;row-gap:2px}
+  .preview-line b,.entry-amt,.legend-amt{white-space:nowrap}
 
 </style>
 </head>
@@ -532,6 +566,11 @@
   const DEFAULT_RATES = { USD: 58, EUR: 62, JPY: 0.39, GBP: 74, SGD: 43, AUD: 38, KRW: 0.042, HKD: 7.4, CNY: 8.1, AED: 15.8 };
 
   const PATCH_NOTES = [
+    { v: 13, title: 'Fits every iPhone', items: [
+      'Checked and tuned on every current iPhone size, from the SE to the 16 Pro Max: nothing runs off the side, and headings and amounts scale down on smaller screens.',
+      'Respects the notch, Dynamic Island and home bar, so panels never slide up under the status bar.',
+      'Bigger tap targets for chips, links and wishlist ticks; typing in the currency box no longer makes the iPhone zoom in.'
+    ]},
     { v: 12, title: 'Tanks', items: [
       'New home screen: your month\'s income fills the Income tank, and you pour it into a tank per category.',
       'Grab the water\'s surface in any tank and drag up to pour money in, or down to send it back to the Income tank. A line runs along the pipes from the Income tank while you pour, and the water follows your finger smoothly.',
@@ -1177,7 +1216,7 @@
     }
     const incomeSub = income <= 0 ? 'Log income with + to fill this tank' : unassigned < 0 ? peso(-unassigned) + ' more planned than came in' : isT ? 'ready to pour' : 'ready to pour into tanks';
     $('incomeCard').innerHTML = `
-      <div class="card-head"><span class="card-title">Income tank</span><span class="card-meta">${peso(income)} came in this ${esc(monthName(month))}</span></div>
+      <div class="card-head"><span class="card-title">Income tank</span><span class="card-meta">${peso(income)} in ${esc(monthName(month))}</span></div>
       <div class="tank big${isT ? ' together' : ' tone-ok'}" id="incomeTank">${incomeLiquid}
         <div class="center-text"><div class="v" id="incomeAmt">${peso(Math.max(0, unassigned))}</div><div class="o" id="incomeSub">${esc(incomeSub)}</div>${isT && income > 0 ? incomeText : ''}</div>
       </div>`;
@@ -2323,7 +2362,7 @@
         return `<div data-id="${c.id}" style="margin-bottom:10px;${isSub ? 'padding-left:18px;border-left:2px solid var(--line)' : ''}">
           <div class="field-row" style="margin-bottom:6px;align-items:center"><button class="glyph-btn" data-pick="${c.id}" aria-label="Change icon for ${esc(c.name)}" aria-expanded="${pickOpen === c.id}">${ico(catGlyph(c), 20)}</button><input type="text" class="cat-name" value="${esc(c.name)}" aria-label="Name"><button class="grip cat-del" data-del="${c.id}" aria-label="Delete ${esc(c.name)}" style="color:var(--minus)">${ico('x', 18)}</button>${isSub ? '' : `<button class="grip" aria-label="Drag to reorder">${GRIP}</button>`}</div>
           ${pickOpen === c.id ? glyphPickerHTML(CAT_GLYPHS, c.glyph && G[c.glyph] ? c.glyph : '', guessGlyph(c.name, CAT_WORDS, c.type === 'income' ? 'coins' : 'tag')) : ''}
-          <select class="cat-parent" ${hasSubs ? 'disabled' : ''} aria-label="Parent category" style="font-size:14px;min-height:40px">${hasSubs ? '<option>Main category (has subcategories)</option>' : parentOpts}</select></div>`;
+          <select class="cat-parent" ${hasSubs ? 'disabled' : ''} aria-label="Parent category" style="min-height:44px">${hasSubs ? '<option>Main category (has subcategories)</option>' : parentOpts}</select></div>`;
       };
       $('catList').innerHTML = tops.map(top => `<div class="sortable-item" data-sort-id="${top.id}">${rowHTML(top, false)}${subsOf(top.id).map(s => rowHTML(s, true)).join('')}</div>`).join('');
       $$('[data-ctype]', modalBody()).forEach(b => b.addEventListener('click', () => { activeTab = b.dataset.ctype; draw(); }));
